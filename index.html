@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оценка учебных материалов — STEAM</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Geologica:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #f5f7fa;
+    --border: #dde3ec;
+    --accent: #1a7f5a;
+    --accent2: #2563eb;
+    --accent3: #db2777;
+    --text: #1a1f2e;
+    --muted: #6b7280;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geologica', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background ── */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(26,127,90,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,127,90,.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .bg-glow {
+    position: fixed; width: 600px; height: 600px; border-radius: 50%;
+    filter: blur(120px); opacity: 0.22; pointer-events: none; z-index: 0;
+    background: radial-gradient(circle, #a7f3d0, transparent 70%);
+    top: -100px; left: -100px;
+    animation: driftA 18s ease-in-out infinite alternate;
+  }
+  .bg-glow2 {
+    position: fixed; width: 500px; height: 500px; border-radius: 50%;
+    filter: blur(100px); opacity: 0.18; pointer-events: none; z-index: 0;
+    background: radial-gradient(circle, #bfdbfe, transparent 70%);
+    bottom: -80px; right: -80px;
+    animation: driftB 22s ease-in-out infinite alternate;
+  }
+  @keyframes driftA { from { transform: translate(0,0); } to { transform: translate(80px, 60px); } }
+  @keyframes driftB { from { transform: translate(0,0); } to { transform: translate(-60px, -80px); } }
+
+  /* ── Layout ── */
+  .wrap {
+    position: relative; z-index: 1;
+    max-width: 860px; margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    text-align: center; margin-bottom: 52px;
+  }
+  .site-header .tag {
+    display: inline-block;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); border: 1px solid var(--accent);
+    padding: 5px 14px; border-radius: 50px; margin-bottom: 20px;
+    opacity: .8;
+  }
+  .site-header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(22px, 5vw, 38px);
+    font-weight: 900;
+    line-height: 1.15;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+  }
+  .site-header p {
+    color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 500px; margin: 0 auto;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 36px;
+    background: var(--surface); border-radius: var(--radius);
+    padding: 6px; border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .tab-btn {
+    flex: 1; padding: 12px 20px;
+    font-family: 'Unbounded', sans-serif; font-size: 12px;
+    font-weight: 700; letter-spacing: 1px;
+    border: none; border-radius: 10px; cursor: pointer;
+    background: transparent; color: var(--muted);
+    transition: all .3s ease;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(26,127,90,.25);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+  /* ── Page ── */
+  .page { display: none; animation: fadeUp .4s ease; }
+  .page.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Section title ── */
+  .section-heading {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 28px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-heading .icon { font-size: 20px; }
+
+  /* ── Question card ── */
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    transition: border-color .2s;
+  }
+  .q-card {box-shadow: 0 2px 8px rgba(0,0,0,.05);}
+  .q-card:hover { border-color: rgba(26,127,90,.35); box-shadow: 0 4px 16px rgba(26,127,90,.1); }
+  .q-label {
+    font-size: 14px; font-weight: 500; line-height: 1.55;
+    margin-bottom: 18px; color: var(--text);
+  }
+  .q-num {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px; color: var(--accent2);
+    letter-spacing: 2px; margin-bottom: 6px;
+    display: block;
+  }
+
+  /* ── Radio group ── */
+  .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+  .radio-option {
+    position: relative; cursor: pointer;
+  }
+  .radio-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .radio-option .pill {
+    display: block;
+    padding: 9px 18px;
+    border-radius: 50px;
+    border: 1.5px solid var(--border);
+    font-size: 13px; font-weight: 400;
+    color: var(--muted);
+    background: var(--surface2);
+    transition: all .2s ease;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .radio-option input:checked + .pill {
+    border-color: var(--accent);
+    background: rgba(110,231,183,.12);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .radio-option .pill:hover { border-color: var(--accent2); color: var(--text); }
+
+  /* ── Star scale ── */
+  .star-scale { display: flex; gap: 8px; align-items: center; }
+  .star-scale label { cursor: pointer; font-size: 28px; transition: transform .15s; line-height: 1; }
+  .star-scale label:hover { transform: scale(1.2); }
+  .star-scale input { display: none; }
+  .star-scale .star { color: var(--border); transition: color .15s; }
+  .star-scale input:checked ~ label .star,
+  .star-scale label:hover ~ label .star { color: var(--border) !important; }
+  .star-scale label:has(input:checked) .star,
+  .star-scale label:has(input:checked) ~ label .star { color: var(--border); }
+
+  /* Simpler star approach */
+  .stars { display: flex; gap: 6px; }
+  .stars input[type=radio] { display: none; }
+  .stars label {
+    font-size: 30px; cursor: pointer; color: var(--border);
+    transition: color .15s, transform .15s;
+    line-height: 1;
+  }
+  .stars label:hover { transform: scale(1.15); }
+  .stars:has(label:nth-child(2):hover) label:nth-child(2),
+  .stars:has(label:nth-child(2):hover) label:nth-child(1) { color: #fbbf24 !important; }
+
+  /* ── Likert scale ── */
+  .likert { display: flex; flex-direction: column; gap: 8px; }
+  .likert-row { display: flex; align-items: center; gap: 14px; }
+  .likert-labels {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted); margin-bottom: 4px;
+    padding: 0 2px;
+  }
+  .likert-bar {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .likert-opt {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    flex: 1;
+  }
+  .likert-opt input { display: none; }
+  .likert-opt .dot {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--muted); font-weight: 500;
+  }
+  .likert-opt input:checked + .dot {
+    border-color: var(--accent);
+    background: rgba(110,231,183,.2);
+    color: var(--accent);
+    box-shadow: 0 0 12px rgba(110,231,183,.3);
+  }
+  .likert-opt .dot:hover { border-color: var(--accent2); }
+  .likert-opt .dot-label { font-size: 10px; color: var(--muted); text-align: center; max-width: 60px; line-height: 1.2; }
+
+  /* ── Numeric stars (1-5) ── */
+  .num-scale { display: flex; gap: 10px; flex-wrap: wrap; }
+  .num-opt { position: relative; }
+  .num-opt input { display: none; }
+  .num-opt .num-btn {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 16px; font-weight: 700;
+    color: var(--muted);
+    transition: all .2s;
+  }
+  .num-opt input:checked + .num-btn {
+    border-color: var(--accent3);
+    background: rgba(244,114,182,.15);
+    color: var(--accent3);
+    box-shadow: 0 0 14px rgba(244,114,182,.25);
+  }
+  .num-opt .num-btn:hover { border-color: var(--accent2); color: var(--text); }
+
+  /* ── Submit button ── */
+  .submit-wrap { margin-top: 36px; text-align: center; }
+  .btn-submit {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 16px 48px;
+    border: none; border-radius: 50px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    color: #ffffff;
+    box-shadow: 0 6px 28px rgba(26,127,90,.3);
+    transition: all .25s;
+  }
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 36px rgba(26,127,90,.45);
+  }
+  .btn-submit:active { transform: translateY(0); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: #ffffff;
+    font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 14px 28px; border-radius: 50px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.15);
+    z-index: 100;
+    transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Stats panel ── */
+  .stats-panel {
+    margin-top: 52px;
+    border-top: 1px solid var(--border);
+    padding-top: 40px;
+  }
+  .stats-panel h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 16px; font-weight: 700; color: var(--accent2);
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .chart-card .ch-label {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    margin-bottom: 4px; line-height: 1.4;
+  }
+  .chart-card .ch-total {
+    font-size: 11px; color: var(--muted); margin-bottom: 14px;
+  }
+  .chart-card canvas { display: block; width: 100% !important; }
+
+  .stats-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+  .btn-secondary {
+    font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 10px 20px; border-radius: 50px;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-danger {
+    border-color: rgba(219,39,119,.35); color: rgba(219,39,119,.7);
+  }
+  .btn-danger:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  @media (max-width: 600px) {
+    .tabs { flex-direction: column; }
+    .q-card { padding: 18px; }
+    .num-btn { width: 40px !important; height: 40px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<div class="wrap">
+
+  <header class="site-header">
+    <div class="tag">Форма обратной связи</div>
+    <h1>STEAM-подход в естественно-научном образовании</h1>
+    <p>Оцените учебные материалы. Ваши ответы помогут улучшить качество пособий.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchPage('posobie')">📘 Пособие</button>
+    <button class="tab-btn" onclick="switchPage('praktikum')">🔬 Практикум</button>
+    <button class="tab-btn" onclick="switchPage('stats')">📊 Статистика</button>
+  </div>
+
+  <!-- ════════ PAGE: ПОСОБИЕ ════════ -->
+  <div id="page-posobie" class="page active">
+    <div class="section-heading"><span class="icon">📘</span> Пособие</div>
+
+    <!-- Q1 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 01</span>
+      <div class="q-label">Порекомендовали бы вы пособие «STEAM-подход в естественно-научном образовании» другим студентам/учителям?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="p_recommend" value="Да"><span class="pill">✓ Да</span></label>
+        <label class="radio-option"><input type="radio" name="p_recommend" value="Нет"><span class="pill">✗ Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 02</span>
+      <div class="q-label">Насколько содержание пособия актуально для изучения учебной дисциплины?</div>
+      <div class="likert-labels">
+        <span>Совсем не актуально</span>
+        <span>Очень актуально</span>
+      </div>
+      <div class="likert-bar" id="likert-p-actuality">
+        <div class="likert-opt"><input type="radio" name="p_actuality" value="1" id="pa1"><label class="dot" for="pa1">1</label></div>
+        <div class="likert-opt"><input type="radio" name="p_actuality" value="2" id="pa2"><label class="dot" for="pa2">2</label></div>
+        <div class="likert-opt"><input type="radio" name="p_actuality" value="3" id="pa3"><label class="dot" for="pa3">3</label></div>
+        <div class="likert-opt"><input type="radio" name="p_actuality" value="4" id="pa4"><label class="dot" for="pa4">4</label></div>
+        <div class="likert-opt"><input type="radio" name="p_actuality" value="5" id="pa5"><label class="dot" for="pa5">5</label></div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 03</span>
+      <div class="q-label">Охватывает ли пособие все необходимые темы курса?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="p_topics" value="Да"><span class="pill">Да</span></label>
+        <label class="radio-option"><input type="radio" name="p_topics" value="Частично"><span class="pill">Частично</span></label>
+        <label class="radio-option"><input type="radio" name="p_topics" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 04</span>
+      <div class="q-label">Насколько логично и удобно структурировано учебное пособие?</div>
+      <div class="num-scale">
+        <div class="num-opt"><input type="radio" name="p_structure" value="1" id="ps1"><label class="num-btn" for="ps1">1</label></div>
+        <div class="num-opt"><input type="radio" name="p_structure" value="2" id="ps2"><label class="num-btn" for="ps2">2</label></div>
+        <div class="num-opt"><input type="radio" name="p_structure" value="3" id="ps3"><label class="num-btn" for="ps3">3</label></div>
+        <div class="num-opt"><input type="radio" name="p_structure" value="4" id="ps4"><label class="num-btn" for="ps4">4</label></div>
+        <div class="num-opt"><input type="radio" name="p_structure" value="5" id="ps5"><label class="num-btn" for="ps5">5</label></div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 05</span>
+      <div class="q-label">Легко ли найти нужную информацию в пособии?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="p_nav" value="Да"><span class="pill">Да</span></label>
+        <label class="radio-option"><input type="radio" name="p_nav" value="Скорее да"><span class="pill">Скорее да</span></label>
+        <label class="radio-option"><input type="radio" name="p_nav" value="Скорее нет"><span class="pill">Скорее нет</span></label>
+        <label class="radio-option"><input type="radio" name="p_nav" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 06</span>
+      <div class="q-label">Как бы вы оценили мультимедийное сопровождение в пособии?</div>
+      <div class="likert-labels">
+        <span>Совсем не актуально</span>
+        <span>Очень актуально</span>
+      </div>
+      <div class="likert-bar">
+        <div class="likert-opt"><input type="radio" name="p_media" value="1" id="pm1"><label class="dot" for="pm1">1</label></div>
+        <div class="likert-opt"><input type="radio" name="p_media" value="2" id="pm2"><label class="dot" for="pm2">2</label></div>
+        <div class="likert-opt"><input type="radio" name="p_media" value="3" id="pm3"><label class="dot" for="pm3">3</label></div>
+        <div class="likert-opt"><input type="radio" name="p_media" value="4" id="pm4"><label class="dot" for="pm4">4</label></div>
+        <div class="likert-opt"><input type="radio" name="p_media" value="5" id="pm5"><label class="dot" for="pm5">5</label></div>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 07</span>
+      <div class="q-label">Достаточно ли наглядных материалов для понимания сложных тем?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="p_visuals" value="Да"><span class="pill">Да</span></label>
+        <label class="radio-option"><input type="radio" name="p_visuals" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 08</span>
+      <div class="q-label">Планируете ли вы использовать это пособие в дальнейшем для повторения или углублённого изучения темы?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="p_future" value="Да"><span class="pill">Да</span></label>
+        <label class="radio-option"><input type="radio" name="p_future" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <div class="submit-wrap">
+      <button class="btn-submit" onclick="submitForm('posobie')">Отправить оценку пособия →</button>
+    </div>
+  </div>
+
+  <!-- ════════ PAGE: ПРАКТИКУМ ════════ -->
+  <div id="page-praktikum" class="page">
+    <div class="section-heading"><span class="icon">🔬</span> Практикум</div>
+
+    <!-- Q1 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 01</span>
+      <div class="q-label">Достаточно ли в практикуме «STEAM-подход в естественно-научном образовании» практических заданий, упражнений, задач?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="pr_quantity" value="Да"><span class="pill">Да</span></label>
+        <label class="radio-option"><input type="radio" name="pr_quantity" value="Недостаточно"><span class="pill">Недостаточно</span></label>
+        <label class="radio-option"><input type="radio" name="pr_quantity" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 02</span>
+      <div class="q-label">Помогают ли практические задания закрепить теоретический материал?</div>
+      <div class="likert-labels">
+        <span>Совсем не помогают</span>
+        <span>Очень помогают</span>
+      </div>
+      <div class="likert-bar">
+        <div class="likert-opt"><input type="radio" name="pr_help" value="1" id="prh1"><label class="dot" for="prh1">1</label></div>
+        <div class="likert-opt"><input type="radio" name="pr_help" value="2" id="prh2"><label class="dot" for="prh2">2</label></div>
+        <div class="likert-opt"><input type="radio" name="pr_help" value="3" id="prh3"><label class="dot" for="prh3">3</label></div>
+        <div class="likert-opt"><input type="radio" name="pr_help" value="4" id="prh4"><label class="dot" for="prh4">4</label></div>
+        <div class="likert-opt"><input type="radio" name="pr_help" value="5" id="prh5"><label class="dot" for="prh5">5</label></div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 03</span>
+      <div class="q-label">Разнообразны ли типы заданий (задачи, кейсы, тесты, проекты и т.д.)?</div>
+      <div class="radio-group">
+        <label class="radio-option"><input type="radio" name="pr_variety" value="Да, очень разнообразны"><span class="pill">Да, очень разнообразны</span></label>
+        <label class="radio-option"><input type="radio" name="pr_variety" value="В целом да"><span class="pill">В целом да</span></label>
+        <label class="radio-option"><input type="radio" name="pr_variety" value="Недостаточно разнообразны"><span class="pill">Недостаточно разнообразны</span></label>
+        <label class="radio-option"><input type="radio" name="pr_variety" value="Нет"><span class="pill">Нет</span></label>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="q-card">
+      <span class="q-num">ВОПРОС 04</span>
+      <div class="q-label">Оцените качество иллюстраций, схем, графиков в практикуме.</div>
+      <div class="num-scale">
+        <div class="num-opt"><input type="radio" name="pr_illust" value="1" id="pri1"><label class="num-btn" for="pri1">1</label></div>
+        <div class="num-opt"><input type="radio" name="pr_illust" value="2" id="pri2"><label class="num-btn" for="pri2">2</label></div>
+        <div class="num-opt"><input type="radio" name="pr_illust" value="3" id="pri3"><label class="num-btn" for="pri3">3</label></div>
+        <div class="num-opt"><input type="radio" name="pr_illust" value="4" id="pri4"><label class="num-btn" for="pri4">4</label></div>
+        <div class="num-opt"><input type="radio" name="pr_illust" value="5" id="pri5"><label class="num-btn" for="pri5">5</label></div>
+      </div>
+    </div>
+
+    <div class="submit-wrap">
+      <button class="btn-submit" onclick="submitForm('praktikum')">Отправить оценку практикума →</button>
+    </div>
+  </div>
+
+  <!-- ════════ PAGE: СТАТИСТИКА ════════ -->
+  <div id="page-stats" class="page">
+    <div class="section-heading"><span class="icon">📊</span> Статистика голосований</div>
+
+    <div class="stats-actions">
+      <button class="btn-secondary" onclick="exportCSV()">⬇ Экспорт CSV</button>
+      <button class="btn-secondary" onclick="exportJSON()">⬇ Экспорт JSON</button>
+      <button class="btn-secondary btn-danger" onclick="clearAll()">✕ Очистить данные</button>
+    </div>
+
+    <div id="stats-container"></div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Storage helpers ──
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('steam_votes') || '{"posobie":[],"praktikum":[]}'); }
+  catch { return { posobie: [], praktikum: [] }; }
+}
+function saveData(d) { localStorage.setItem('steam_votes', JSON.stringify(d)); }
+
+// ── Tab switching ──
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (page === 'stats') renderStats();
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Collect form values ──
+function collectForm(prefix, fields) {
+  const result = { ts: new Date().toISOString() };
+  for (const [name, label] of fields) {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    result[label] = el ? el.value : null;
+  }
+  return result;
+}
+
+// ── Submit ──
+function submitForm(type) {
+  let entry, fields;
+  if (type === 'posobie') {
+    fields = [
+      ['p_recommend','Рекомендация'],
+      ['p_actuality','Актуальность содержания'],
+      ['p_topics','Полнота тем'],
+      ['p_structure','Структура (1-5)'],
+      ['p_nav','Навигация'],
+      ['p_media','Мультимедиа'],
+      ['p_visuals','Наглядность'],
+      ['p_future','Планируете использовать'],
+    ];
+  } else {
+    fields = [
+      ['pr_quantity','Количество заданий'],
+      ['pr_help','Закрепление теории'],
+      ['pr_variety','Разнообразие заданий'],
+      ['pr_illust','Качество иллюстраций (1-5)'],
+    ];
+  }
+  entry = collectForm(type, fields);
+
+  // check all answered
+  const unanswered = fields.filter(([name]) => !document.querySelector(`input[name="${name}"]:checked`));
+  if (unanswered.length > 0) {
+    showToast(`⚠ Ответьте на все вопросы (${unanswered.length} пропущено)`);
+    return;
+  }
+
+  const data = loadData();
+  data[type].push(entry);
+  saveData(data);
+  showToast('✓ Голос сохранён! Спасибо.');
+
+  // reset
+  document.querySelectorAll(`#page-${type === 'posobie' ? 'posobie' : 'praktikum'} input[type=radio]`)
+    .forEach(el => el.checked = false);
+}
+
+// ── Chart instances registry (to destroy before re-render) ──
+const chartRegistry = {};
+
+// ── Render stats with bar charts ──
+function renderStats() {
+  const data = loadData();
+  const container = document.getElementById('stats-container');
+
+  // destroy existing charts
+  Object.values(chartRegistry).forEach(c => c.destroy());
+  Object.keys(chartRegistry).forEach(k => delete chartRegistry[k]);
+  container.innerHTML = '';
+
+  const PALETTE = [
+    '#1a7f5a','#2563eb','#db2777','#d97706','#7c3aed',
+    '#059669','#dc2626','#0284c7','#c2410c','#4f46e5'
+  ];
+
+  const sections = [
+    {
+      title: '📘 Пособие', key: 'posobie',
+      qs: [
+        { label: 'Порекомендовали бы вы пособие другим?', field: 'Рекомендация' },
+        { label: 'Актуальность содержания пособия', field: 'Актуальность содержания' },
+        { label: 'Полнота охвата тем курса', field: 'Полнота тем' },
+        { label: 'Логичность структуры пособия (1–5)', field: 'Структура (1-5)' },
+        { label: 'Лёгкость поиска информации', field: 'Навигация' },
+        { label: 'Оценка мультимедийного сопровождения', field: 'Мультимедиа' },
+        { label: 'Достаточность наглядных материалов', field: 'Наглядность' },
+        { label: 'Планируете использовать в дальнейшем?', field: 'Планируете использовать' },
+      ]
+    },
+    {
+      title: '🔬 Практикум', key: 'praktikum',
+      qs: [
+        { label: 'Достаточность практических заданий', field: 'Количество заданий' },
+        { label: 'Помощь заданий в закреплении теории', field: 'Закрепление теории' },
+        { label: 'Разнообразие типов заданий', field: 'Разнообразие заданий' },
+        { label: 'Качество иллюстраций/схем/графиков (1–5)', field: 'Качество иллюстраций (1-5)' },
+      ]
+    }
+  ];
+
+  sections.forEach(sec => {
+    const votes = data[sec.key];
+
+    // Section heading
+    const sh = document.createElement('div');
+    sh.innerHTML = `<div class="section-heading" style="margin-top:28px">
+      <span>${sec.title}</span>
+      <span style="font-size:12px;font-weight:400;color:var(--muted);margin-left:auto">Голосов: ${votes.length}</span>
+    </div>`;
+    container.appendChild(sh);
+
+    if (votes.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.cssText = 'color:var(--muted);font-size:13px;margin-bottom:24px;';
+      empty.textContent = 'Голосований пока нет.';
+      container.appendChild(empty);
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'charts-grid';
+
+    sec.qs.forEach((q, qi) => {
+      // count answers
+      const counts = {};
+      let total = 0;
+      votes.forEach(v => {
+        const val = v[q.field];
+        if (val != null) { counts[val] = (counts[val]||0)+1; total++; }
+      });
+      if (total === 0) return;
+
+      // sort: numeric keys numerically, others by count desc
+      const isNumeric = Object.keys(counts).every(k => !isNaN(k));
+      const entries = Object.entries(counts).sort((a,b) =>
+        isNumeric ? Number(a[0]) - Number(b[0]) : b[1] - a[1]
+      );
+
+      const labels = entries.map(([k]) => k);
+      const values = entries.map(([,v]) => v);
+      const pcts   = values.map(v => total ? Math.round(v/total*100) : 0);
+
+      // card
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      const canvasId = `chart_${sec.key}_${qi}`;
+      card.innerHTML = `
+        <div class="ch-label">${q.label}</div>
+        <div class="ch-total">Ответов: ${total}</div>
+        <canvas id="${canvasId}" height="180"></canvas>`;
+      grid.appendChild(card);
+
+      // draw chart after DOM insertion (requestAnimationFrame)
+      requestAnimationFrame(() => {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        const bgColors = labels.map((_, i) => PALETTE[i % PALETTE.length] + 'cc');
+        const bdrColors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+        chartRegistry[canvasId] = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Кол-во ответов',
+              data: values,
+              backgroundColor: bgColors,
+              borderColor: bdrColors,
+              borderWidth: 2,
+              borderRadius: 8,
+              borderSkipped: false,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => ` ${ctx.raw} ответов (${pcts[ctx.dataIndex]}%)`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: '#6b7280',
+                  font: { family: 'Geologica', size: 11 },
+                  maxRotation: 30,
+                }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  color: '#6b7280',
+                  font: { family: 'Geologica', size: 11 },
+                  stepSize: 1,
+                  precision: 0,
+                },
+                grid: { color: '#dde3ec' }
+              }
+            }
+          }
+        });
+      });
+    });
+
+    container.appendChild(grid);
+  });
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  const data = loadData();
+  let csv = '';
+
+  for (const [type, votes] of Object.entries(data)) {
+    if (!votes.length) continue;
+    const keys = Object.keys(votes[0]);
+    csv += `\n=== ${type.toUpperCase()} ===\n`;
+    csv += keys.join(';') + '\n';
+    for (const v of votes) csv += keys.map(k => `"${v[k] ?? ''}"`).join(';') + '\n';
+  }
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'steam_votes_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('✓ CSV скачан');
+}
+
+// ── Export JSON ──
+function exportJSON() {
+  const data = loadData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'steam_votes_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('✓ JSON скачан');
+}
+
+// ── Clear ──
+function clearAll() {
+  if (!confirm('Удалить все голоса? Это действие необратимо.')) return;
+  saveData({ posobie: [], praktikum: [] });
+  renderStats();
+  showToast('Данные очищены');
+}
+</script>
+</body>
+</html>
